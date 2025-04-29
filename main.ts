@@ -71,9 +71,9 @@ export default class FolgezettelPlugin extends Plugin {
         if (line.slice(0, cursor.ch).endsWith(']]')) {
             const startBrackets = line.lastIndexOf('[[', cursor.ch);
             if (startBrackets !== -1) {
-                // Only format the current line's wikilink if it doesn't already have an alias
+                // Only format the current line's wikilink if it doesn't already have an alias or block reference
                 const wikilink = line.slice(startBrackets, cursor.ch);
-                if (!wikilink.includes('|')) {
+                if (!wikilink.includes('|') && !wikilink.includes('#') && !wikilink.includes('^')) {
                     this.formatSingleWikilink(editor, cursor.line, startBrackets, cursor.ch);
                 }
             }
