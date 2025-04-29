@@ -151,6 +151,29 @@ export default class FolgezettelPlugin extends Plugin {
         return level;
     }
 
+    // Helper: simple glob match (supports * and **)
+    private matchesGlob(path: string, pattern: string): boolean {
+        // Escape regex special chars except *
+        let regex = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+        // Replace ** with .*, * with [^/]*
+        regex = regex.replace(/\*\*/g, '.*').replace(/\*/g, '[^/]*');
+        return new RegExp('^' + regex + '$').test(path);
+    }
+
+    // Helper: should indent this path?
+    private shouldIndent(path: string): boolean {
+        const { includeFolders, excludeFolders } = this.settings;
+        // Exclude: if path starts with any exclude pattern (and is either equal or followed by /), exclude
+        if (excludeFolders.some(pattern => path === pattern || path.startsWith(pattern + '/'))) {
+            return false;
+        }
+        // Include: if includeFolders is not empty, must match exactly
+        if (includeFolders.length > 0 && !includeFolders.includes(path)) {
+            return false;
+        }
+        return true;
+    }
+
     public updateFileExplorerIndentation() {
         const fileExplorer = document.querySelector('.nav-files-container');
         if (!fileExplorer) return;
@@ -160,6 +183,17 @@ export default class FolgezettelPlugin extends Plugin {
         items.forEach((item) => {
             const titleContent = item.querySelector('.nav-file-title-content, .nav-folder-title-content');
             if (!titleContent) return;
+
+            // Get the path from data-path attribute
+            const path = item.getAttribute('data-path') || '';
+            if (!this.shouldIndent(path)) {
+                // Remove indentation classes if present
+                item.classList.remove('folgezettel-indent');
+                for (let i = 1; i <= 10; i++) {
+                    item.classList.remove(`folgezettel-level-${i}`);
+                }
+                return;
+            }
 
             const filename = titleContent.textContent || '';
             const level = this.getFolgezettelLevel(filename);
@@ -230,7 +264,7 @@ class FolgezettelSettingTab extends PluginSettingTab {
                         // Remove all indentation classes
                         const fileExplorer = document.querySelector('.nav-files-container');
                         if (fileExplorer) {
-                            const fileItems = fileExplorer.querySelectorAll('.nav-file-title');
+                            const fileItems = fileExplorer.querySelectorAll('.nav-file-title, .nav-folder-title');
                             fileItems.forEach((item) => {
                                 item.classList.remove('folgezettel-indent');
                                 for (let i = 1; i <= 10; i++) {
@@ -239,6 +273,30 @@ class FolgezettelSettingTab extends PluginSettingTab {
                             });
                         }
                     }
+                }));
+
+        new Setting(containerEl)
+            .setName('Include folders for indentation')
+            .setDesc('Only apply indentation to files/folders with a path exactly matching one of these folders. One per line. Subfolders and files are NOT included unless specified exactly. Example: "Zetteln" will only include the Zetteln folder itself, not its contents.')
+            .addTextArea(text => text
+                .setPlaceholder('Zetteln\nZettelkasten/2024')
+                .setValue(this.plugin.settings.includeFolders.join('\n'))
+                .onChange(async (value) => {
+                    this.plugin.settings.includeFolders = value.split(/\n+/).map(s => s.trim()).filter(Boolean);
+                    await this.plugin.saveSettings();
+                    this.plugin.updateFileExplorerIndentation();
+                }));
+
+        new Setting(containerEl)
+            .setName('Exclude folders from indentation')
+            .setDesc('Do not apply indentation to these folders or anything inside them (recursively). One per line. Example: "Journal" will exclude the Journal folder and all its contents.')
+            .addTextArea(text => text
+                .setPlaceholder('Journal\nTemplates/2024')
+                .setValue(this.plugin.settings.excludeFolders.join('\n'))
+                .onChange(async (value) => {
+                    this.plugin.settings.excludeFolders = value.split(/\n+/).map(s => s.trim()).filter(Boolean);
+                    await this.plugin.saveSettings();
+                    this.plugin.updateFileExplorerIndentation();
                 }));
     }
 }
