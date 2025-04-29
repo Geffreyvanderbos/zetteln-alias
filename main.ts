@@ -1,4 +1,4 @@
-import { Plugin, Editor, PluginSettingTab, Setting, App } from 'obsidian';
+import { Plugin, Editor, PluginSettingTab, Setting, App, TFile } from 'obsidian';
 import { ZettelSettings, DEFAULT_SETTINGS } from './settings';
 
 export default class FolgezettelPlugin extends Plugin {
@@ -23,6 +23,20 @@ export default class FolgezettelPlugin extends Plugin {
                 }
             })
         );
+
+        // Register file explorer modification
+        this.registerEvent(
+            this.app.workspace.on('file-open', (file: TFile) => {
+                if (this.settings.enableIndentation) {
+                    this.updateFileExplorerIndentation();
+                }
+            })
+        );
+
+        // Initial update of file explorer
+        if (this.settings.enableIndentation) {
+            this.updateFileExplorerIndentation();
+        }
     }
 
     async loadSettings() {
@@ -109,6 +123,59 @@ export default class FolgezettelPlugin extends Plugin {
             this.isFormatting = false;
         }
     }
+
+    private getFolgezettelLevel(filename: string): number {
+        // Extract the folgezettel part (e.g., 1-1a, 1-4a1, etc.)
+        const match = filename.match(/^(\d+(?:-[\da-zA-Z]+)*)/);
+        if (!match) return 0;
+        const id = match[1];
+        if (!id) return 0;
+
+        // Split by dashes, each dash increases the level
+        const parts = id.split('-');
+        let level = parts.length - 1;
+
+        // For each part after the first, count digit/letter transitions
+        for (let i = 1; i < parts.length; i++) {
+            const part = parts[i];
+            // Count transitions between digit and letter
+            let lastType = /\d/.test(part[0]) ? 'digit' : 'letter';
+            for (let j = 1; j < part.length; j++) {
+                const type = /\d/.test(part[j]) ? 'digit' : 'letter';
+                if (type !== lastType) {
+                    level++;
+                    lastType = type;
+                }
+            }
+        }
+        return level;
+    }
+
+    public updateFileExplorerIndentation() {
+        const fileExplorer = document.querySelector('.nav-files-container');
+        if (!fileExplorer) return;
+
+        // Handle both files and folders
+        const items = fileExplorer.querySelectorAll('.nav-file-title, .nav-folder-title');
+        items.forEach((item) => {
+            const titleContent = item.querySelector('.nav-file-title-content, .nav-folder-title-content');
+            if (!titleContent) return;
+
+            const filename = titleContent.textContent || '';
+            const level = this.getFolgezettelLevel(filename);
+            
+            // Remove existing indentation classes
+            item.classList.remove('folgezettel-indent');
+            for (let i = 1; i <= 10; i++) {
+                item.classList.remove(`folgezettel-level-${i}`);
+            }
+
+            // Add appropriate indentation class
+            if (level > 0) {
+                item.classList.add(`folgezettel-level-${Math.min(level, 10)}`);
+            }
+        });
+    }
 }
 
 class FolgezettelSettingTab extends PluginSettingTab {
@@ -147,6 +214,31 @@ class FolgezettelSettingTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     this.plugin.settings.customRegex = value;
                     await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName('Enable Folgezettel Indentation')
+            .setDesc('Indent files in the file explorer based on their Folgezettel number')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableIndentation)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableIndentation = value;
+                    await this.plugin.saveSettings();
+                    if (value) {
+                        this.plugin.updateFileExplorerIndentation();
+                    } else {
+                        // Remove all indentation classes
+                        const fileExplorer = document.querySelector('.nav-files-container');
+                        if (fileExplorer) {
+                            const fileItems = fileExplorer.querySelectorAll('.nav-file-title');
+                            fileItems.forEach((item) => {
+                                item.classList.remove('folgezettel-indent');
+                                for (let i = 1; i <= 10; i++) {
+                                    item.classList.remove(`folgezettel-level-${i}`);
+                                }
+                            });
+                        }
+                    }
                 }));
     }
 }

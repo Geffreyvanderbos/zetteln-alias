@@ -1,9 +1,9 @@
 {
-	"id": "zetteln-alias",
-	"name": "Zetteln Alias",
+	"id": "zetteln",
+	"name": "Zetteln",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "Automatically formats wikilinks for Folgezettel-style note titles",
+	"description": "A comprehensive Zettelkasten toolkit for Obsidian",
 	"author": "Your Name",
 	"isDesktopOnly": false
 }

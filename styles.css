@@ -6,3 +6,40 @@ available in the app when your plugin is enabled.
 If your plugin does not need CSS, delete this file.
 
 */
+
+/* Folgezettel indentation styles */
+.folgezettel-indent .nav-file-title-content {
+    transform: translateX(0);
+}
+
+/* Different levels of indentation */
+.folgezettel-level-1 .nav-file-title-content{ 
+    transform: translateX(0.5em);
+}
+.folgezettel-level-2 .nav-file-title-content{ 
+    transform: translateX(1em);
+}
+.folgezettel-level-3 .nav-file-title-content{ 
+    transform: translateX(1.5em);
+}
+.folgezettel-level-4 .nav-file-title-content{ 
+    transform: translateX(2em);
+}
+.folgezettel-level-5 .nav-file-title-content{ 
+    transform: translateX(2.5em);
+}
+.folgezettel-level-6 .nav-file-title-content{ 
+    transform: translateX(3em);
+}
+.folgezettel-level-7 .nav-file-title-content{ 
+    transform: translateX(3.5em);
+}
+.folgezettel-level-8 .nav-file-title-content{ 
+    transform: translateX(4em);
+}
+.folgezettel-level-9 .nav-file-title-content{ 
+    transform: translateX(4.5em);
+}
+.folgezettel-level-10 .nav-file-title-content{ 
+    transform: translateX(5em);
+}
